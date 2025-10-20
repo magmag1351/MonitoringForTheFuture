@@ -1,79 +1,43 @@
-import time
 import psutil
-import sqlite3
-from datetime import datetime
-import threading
-
-import mouse
 import keyboard
+import mouse
+import time
 
-DB_PATH = "data/logs.db"
+# 前回値保持用（キー・マウスカウント）
+_last_keyboard_count = 0
+_last_mouse_count = 0
 
+def get_cpu_usage():
+    """CPU使用率を取得（1秒間隔の平均）"""
+    return psutil.cpu_percent(interval=1)
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS activity_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT,
-            cpu_usage REAL,
-            mouse_clicks INTEGER,
-            keyboard_presses INTEGER
-        )
-    """)
-    conn.commit()
-    conn.close()
+def get_keyboard_count():
+    """キー入力数を簡易カウント"""
+    global _last_keyboard_count
+    count = keyboard._os_keyboard._pressed_keys_count  # keyboardモジュール内部カウント
+    delta = count - _last_keyboard_count
+    _last_keyboard_count = count
+    return max(delta, 0)
 
-
-# --- カウンタ変数をグローバル管理 ---
-mouse_clicks = 0
-keyboard_presses = 0
-lock = threading.Lock()
-
-
-def on_mouse_event(event):
-    global mouse_clicks
-    with lock:
-        mouse_clicks += 1
-
-
-def on_keyboard_event(event):
-    global keyboard_presses
-    with lock:
-        keyboard_presses += 1
-
+def get_mouse_count():
+    """マウスクリック数を簡易カウント"""
+    global _last_mouse_count
+    count = mouse.get_position()[0]  # マウス移動の変化を簡易カウントとして利用
+    delta = count - _last_mouse_count
+    _last_mouse_count = count
+    return max(delta, 0)
 
 def collect_activity():
-    """CPU使用率と操作数を1秒ごとにDBへ記録"""
-    init_db()
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
+    cpu_val = get_cpu_usage()
+    key_val = get_keyboard_count()
+    mouse_val = get_mouse_count()
 
-    # イベントフックを登録
-    mouse.hook(on_mouse_event)
-    keyboard.hook(on_keyboard_event)
+    # 簡易疲労スコア計算（CPU/100 + key/100 + mouse/100 の平均）
+    fatigue_score = (cpu_val/100 + key_val/100 + mouse_val/100) / 3
 
-    print("Activity logger started. Press Ctrl+C to stop.")
-
-    try:
-        while True:
-            cpu = psutil.cpu_percent(interval=1)
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            with lock:
-                m, k = mouse_clicks, keyboard_presses
-                mouse_clicks, keyboard_presses = 0, 0  # リセット
-
-            cur.execute(
-                "INSERT INTO activity_log (timestamp, cpu_usage, mouse_clicks, keyboard_presses) VALUES (?, ?, ?, ?)",
-                (timestamp, cpu, m, k),
-            )
-            conn.commit()
-
-    except KeyboardInterrupt:
-        print("Logging stopped.")
-        conn.close()
-    finally:
-        mouse.unhook_all()
-        keyboard.unhook_all()
+    return {
+        "cpu": cpu_val,
+        "keyboard": key_val,
+        "mouse": mouse_val,
+        "fatigue": fatigue_score
+    }
