@@ -1,0 +1,8 @@
+pandas
+matplotlib
+scikit-learn
+lightgbm
+psutil
+keyboard
+mouse
+reportlab

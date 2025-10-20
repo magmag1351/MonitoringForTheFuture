@@ -1,0 +1,54 @@
+# --- Python 一般 ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# --- 仮想環境（venv, conda, etc）---
+.venv/
+venv/
+env/
+ENV/
+DevApps/
+*.env
+
+# --- Jupyter Notebook ---
+.ipynb_checkpoints/
+*.ipynb_convert/
+*.ipynb_save/
+
+# --- VSCode / PyCharm / IDE関連 ---
+.vscode/
+.idea/
+
+# --- OSごとの不要ファイル ---
+.DS_Store
+Thumbs.db
+
+# --- ログや実行出力 ---
+*.log
+logs/
+tmp/
+__temp__/
+output/
+data/temp/
+data/cache/
+
+# --- モデルファイルなど大型成果物 ---
+models/*.h5
+models/*.pt
+models/*.pkl
+models/*.joblib
+
+# --- バックアップファイル ---
+*~
+*.bak
+*.swp
+*.swo
+
+# --- Pythonビルド関連 ---
+build/
+dist/
+*.egg-info/
+.eggs/
